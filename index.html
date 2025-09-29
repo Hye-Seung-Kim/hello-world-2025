@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escape the Logic Chamber</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Courier+Prime:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a0000, #330000, #1a0000);
+            color: #ffcccc;
+            font-family: 'Courier Prime', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .title {
+            font-family: 'Creepster', cursive;
+            font-size: 3rem;
+            text-align: center;
+            color: #ff6666;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+            margin-bottom: 30px;
+            animation: flicker 3s infinite alternate;
+        }
+        
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        /* 3D Model Container */
+        .model-container {
+            width: 100%;
+            height: 350px;
+            margin: 20px 0;
+            border: 3px solid #660000;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+            position: relative;
+        }
+
+        #canvas-3d {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .model-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff6666;
+            font-size: 1.2rem;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .model-hint {
+            text-align: center;
+            color: #ff9999;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            opacity: 0.7;
+        }
+        
+        .game-screen {
+            background: rgba(0,0,0,0.8);
+            border: 3px solid #660000;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(255,0,0,0.3);
+        }
+        
+        .saw-message {
+            background: rgba(102,0,0,0.3);
+            border-left: 4px solid #ff6666;
+            padding: 15px;
+            margin: 15px 0;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+        
+        .puzzle-title {
+            font-size: 1.8rem;
+            color: #ff9999;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        .input-group {
+            margin: 15px 0;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ffcccc;
+            font-weight: bold;
+        }
+        
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #660000;
+            border-radius: 5px;
+            color: #ffcccc;
+            font-family: 'Courier Prime', monospace;
+            font-size: 1rem;
+        }
+        
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #ff6666;
+            box-shadow: 0 0 10px rgba(255,102,102,0.3);
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #660000, #990000);
+            color: #ffcccc;
+            border: 2px solid #ff6666;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier Prime', monospace;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: linear-gradient(45deg, #990000, #cc0000);
+            box-shadow: 0 0 15px rgba(255,102,102,0.5);
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            background: #333;
+            color: #666;
+            border-color: #444;
+            cursor: not-allowed;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(102,0,0,0.2);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ff9999;
+        }
+        
+        .feedback {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .feedback.success {
+            background: rgba(0,102,0,0.3);
+            border: 2px solid #00ff00;
+            color: #00ff88;
+        }
+        
+        .feedback.error {
+            background: rgba(102,0,0,0.3);
+            border: 2px solid #ff0000;
+            color: #ff6666;
+        }
+        
+        .feedback.hint {
+            background: rgba(102,102,0,0.3);
+            border: 2px solid #ffff00;
+            color: #ffff88;
+        }
+        
+        .puzzle-content {
+            background: rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .dice-display {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .die {
+            width: 60px;
+            height: 60px;
+            background: #ffcccc;
+            color: #000;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            border: 3px solid #660000;
+        }
+        
+        .logic-gate {
+            background: rgba(102,102,102,0.2);
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: 'Courier Prime', monospace;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .typing-effect {
+            overflow: hidden;
+            border-right: 3px solid #ff6666;
+            white-space: nowrap;
+            animation: typing 3s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+        
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #ff6666; }
+        }
+        
+        .final-score {
+            text-align: center;
+            font-size: 2rem;
+            color: #ff9999;
+            margin: 20px 0;
+        }
+        
+        .grade {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .grade.master {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+        }
+        
+        .grade.skilled {
+            background: linear-gradient(45deg, #c0c0c0, #e8e8e8);
+            color: #000;
+        }
+        
+        .grade.decent {
+            background: linear-gradient(45deg, #cd7f32, #d2b48c);
+            color: #000;
+        }
+        
+        .grade.needs-improvement {
+            background: linear-gradient(45deg, #800080, #9966cc);
+            color: #fff;
+        }
+
+        /* Modal Popup Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, #1a0000, #330000);
+            border: 3px solid #660000;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+            transform: scale(0.7) rotateX(90deg);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .modal-overlay.show .modal {
+            transform: scale(1) rotateX(0deg);
+        }
+
+        .modal-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #ff9999;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .modal-content {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            color: #ffcccc;
+            white-space: pre-line;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .modal.success {
+            border-color: #00ff00;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+        }
+
+        .modal.success .modal-header {
+            color: #00ff88;
+        }
+
+        .modal.error {
+            border-color: #ff0000;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+        }
+
+        .modal.error .modal-header {
+            color: #ff6666;
+        }
+
+        .modal.hint {
+            border-color: #ffff00;
+            box-shadow: 0 0 30px rgba(255, 255, 0, 0.3);
+        }
+
+        .modal.hint .modal-header {
+            color: #ffff88;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #ff6666;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .modal-close:hover {
+            color: #ff9999;
+            transform: scale(1.2);
+        }
+
+        /* Typewriter effect for modal content */
+        .typewriter {
+            overflow: hidden;
+            border-right: 3px solid #ff6666;
+            white-space: nowrap;
+            animation: typing 2s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #ff6666; }
+        }
+
+        /* Shake animation for errors */
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">ESCAPE THE LOGIC CHAMBER</h1>
+        
+        <!-- Main Menu Screen -->
+        <div id="main-menu" class="game-screen">
+            <div class="puzzle-title">I want to play a game</div>
+            
+            <!-- 3D Model Container -->
+            <div class="model-container">
+                <canvas id="canvas-3d"></canvas>
+                <div class="model-loading" id="model-loading">Loading Jigsaw...</div>
+            </div>
+            
+            <div class="saw-message">
+                [JIGSAW] Live or die. Make your choice. 4 puzzles.
+            </div>
+            
+            <div class="input-group">
+                <label for="player-name">📝 Enter your name, test subject:</label>
+                <input type="text" id="player-name" placeholder="Unknown">
+            </div>
+            
+            <div class="input-group">
+                <label for="difficulty">🎚️ Select difficulty:</label>
+                <select id="difficulty">
+                    <option value="easy">EASY (Extra hints, more attempts)</option>
+                    <option value="normal" selected>NORMAL (Standard challenge)</option>
+                    <option value="hard">HARD (Limited attempts, no hints)</option>
+                </select>
+            </div>
+            
+            <button class="btn" onclick="startGame()">BEGIN THE GAME</button>
+        </div>
+        
+        <!-- Game Stats -->
+        <div id="game-stats" class="stats hidden">
+            <div class="stat-item">
+                <div class="stat-value" id="puzzles-solved">0</div>
+                <div>Puzzles Solved</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="attempts-remaining">3</div>
+                <div>Attempts Left</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="hints-used">0</div>
+                <div>Hints Used</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="current-score">0</div>
+                <div>Score</div>
+            </div>
+        </div>
+        
+        <!-- Puzzle 1: Lock Combination -->
+        <div id="puzzle1" class="game-screen hidden">
+            <div class="puzzle-title">🔒 [PUZZLE 1] THE LOCK OF LOGIC</div>
+            <div class="saw-message">
+                [Jigsaw] Your first test. A combination lock holds your fate.
+            </div>
+            
+            <div class="puzzle-content">
+                <p>Listen carefully to the conditions:</p>
+                <ul style="margin: 10px 0 10px 20px;">
+                    <li>• Three digits must sum to exactly 15</li>
+                    <li>• The number must be divisible by both 3 and 5</li>
+                    <li>• First digit equals last digit plus 2</li>
+                    <li>• Middle digit must be odd</li>
+                </ul>
+                <p>You have one chance. Choose wisely.</p>
+            </div>
+            
+            <div class="input-group">
+                <label for="lock-code">Enter three-digit code:</label>
+                <input type="text" id="lock-code" maxlength="3" placeholder="000">
+            </div>
+            
+            <button class="btn" onclick="getHint('puzzle1', 'Think about multiples of 15: 150, 165, 180, 195...')">💡 Get Hint</button>
+            <button class="btn" onclick="solvePuzzle1()">🔓 Submit Code</button>
+            
+            <div id="puzzle1-feedback" class="feedback hidden"></div>
+        </div>
+        
+        <!-- Puzzle 2: Dice Prediction -->
+        <div id="puzzle2" class="game-screen hidden">
+            <div class="puzzle-title">🎲 [PUZZLE 2] THE DICE OF DESTINY</div>
+            <div class="saw-message">
+                [JIGSAW] Two dice will determine your next step. But this isn't just luck... it's probability.
+            </div>
+            
+            <div class="puzzle-content">
+                <p>The first die will be revealed to you.</p>
+                <p>You must predict TWO things based on conditional probability:</p>
+                <ol style="margin: 10px 0 10px 20px;">
+                    <li>Will the sum be ODD or EVEN?</li>
+                    <li>Will the sum be GREATER than 7?</li>
+                </ol>
+                <p>Use the information wisely. Get both predictions right to proceed.</p>
+            </div>
+            
+            <div id="dice-result" class="dice-display hidden">
+                <div class="die" id="die1">?</div>
+                <div class="die" id="die2">?</div>
+            </div>
+            
+            <div class="input-group">
+                <label>🎯 Predict: Will sum be (O)dd or (E)ven?</label>
+                <select id="odd-even-prediction">
+                    <option value="odd">ODD</option>
+                    <option value="even">EVEN</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label>Will sum be greater than 7?</label>
+                <select id="greater-seven-prediction">
+                    <option value="yes">YES</option>
+                    <option value="no">NO</option>
+                </select>
+            </div>
+            
+            <button class="btn" id="dice-action-btn" onclick="revealFirstDie()">🎲 Reveal First Die</button>
+            
+            <div id="puzzle2-feedback" class="feedback hidden"></div>
+        </div>
+        
+        <!-- Puzzle 3: Cipher -->
+        <div id="puzzle3" class="game-screen hidden">
+            <div class="puzzle-title">🔤 [PUZZLE 3] THE CIPHER OF SECRETS</div>
+            <div class="saw-message">
+                [JIGSAW] Words hold power. Decode this message.
+            </div>
+            
+            <div class="puzzle-content">
+                <p>Each letter has been shifted by its position:</p>
+                <p>1st letter shifted +1, 2nd letter +2, 3rd +3, etc.</p>
+                <p><strong>Encoded message: FUFEUK</strong></p>
+            </div>
+            
+            <div class="input-group">
+                <label for="cipher-answer">📝 Enter the decoded message:</label>
+                <input type="text" id="cipher-answer" placeholder="Enter decoded word">
+            </div>
+            
+            <button class="btn" onclick="getHint('puzzle3', 'E becomes F (+1), S becomes U (+2)... find the pattern!')">💡 Get Hint</button>
+            <button class="btn" onclick="solvePuzzle3()">🔓 Submit Answer</button>
+            
+            <div id="puzzle3-feedback" class="feedback hidden"></div>
+        </div>
+        
+        <!-- Puzzle 4: Logic Gates -->
+        <div id="puzzle4" class="game-screen hidden">
+            <div class="puzzle-title">⚡ [PUZZLE 4] THE FINAL GATE</div>
+            <div class="saw-message">
+                [JIGSAW] Your last test. Three switches control your fate.
+            </div>
+            
+            <div class="puzzle-content">
+                <p>The logic gate equation: <strong>(A AND B) OR (NOT C)</strong></p>
+                <p>Set A, B, C to make the output TRUE.</p>
+                <p>This is your final judgment.</p>
+            </div>
+            
+            <div class="input-group">
+                <label>🔘 Set switch A (True/False):</label>
+                <select id="switch-a">
+                    <option value="true">TRUE</option>
+                    <option value="false">FALSE</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label>🔘 Set switch B (True/False):</label>
+                <select id="switch-b">
+                    <option value="true">TRUE</option>
+                    <option value="false">FALSE</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label>🔘 Set switch C (True/False):</label>
+                <select id="switch-c">
+                    <option value="true">TRUE</option>
+                    <option value="false">FALSE</option>
+                </select>
+            </div>
+            
+            <div id="logic-gate-result" class="logic-gate hidden"></div>
+            
+            <button class="btn" onclick="getHint('puzzle4', 'Try A=True, B=True, C=any value OR A=any, B=any, C=False')">💡 Get Hint</button>
+            <button class="btn" onclick="solvePuzzle4()">⚡ Test Logic Gate</button>
+            
+            <div id="puzzle4-feedback" class="feedback hidden"></div>
+        </div>
+        
+        <!-- Game Over Screen -->
+        <div id="game-over" class="game-screen hidden">
+            <div class="puzzle-title">💀 GAME OVER 💀</div>
+            <div id="game-over-message" class="saw-message"></div>
+            <div id="final-results"></div>
+            <button class="btn" onclick="restartGame()">🔄 Play Again</button>
+        </div>
+        
+        <!-- Victory Screen -->
+        <div id="victory" class="game-screen hidden">
+            <div class="puzzle-title">🎉 ESCAPE SUCCESSFUL! 🎉</div>
+            <div class="saw-message">
+                [JIGSAW] Impressive. You've proven your worth today.<br>
+                *CLANK* The final lock opens...
+            </div>
+            <div id="victory-results"></div>
+            <button class="btn" onclick="restartGame()">🔄 Play Again</button>
+        </div>
+
+        <!-- Modal Popup -->
+        <div id="modal-overlay" class="modal-overlay">
+            <div id="modal" class="modal">
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+                <div id="modal-header" class="modal-header"></div>
+                <div id="modal-content" class="modal-content"></div>
+                <div class="modal-buttons">
+                    <button id="modal-btn-primary" class="btn" onclick="closeModal()">Confirm</button>
+                    <button id="modal-btn-secondary" class="btn hidden" onclick="closeModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.141.0/build/three.module.js",
+            "GLTFLoader": "https://unpkg.com/three@0.141.0/examples/jsm/loaders/GLTFLoader.js",
+            "OrbitControls": "https://unpkg.com/three@0.141.0/examples/jsm/controls/OrbitControls.js"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import { GLTFLoader } from 'GLTFLoader';
+        import * as THREE from 'three';
+        import { OrbitControls } from 'OrbitControls';
+
+        // 3D Model Setup
+        function init3DModel() {
+            const canvas = document.getElementById('canvas-3d');
+            const loadingText = document.getElementById('model-loading');
+            
+            if (!canvas) return;
+
+            const scene = new THREE.Scene();
+            const renderer = new THREE.WebGLRenderer({ 
+                canvas: canvas,
+                antialias: true,
+                alpha: true
+            });
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+
+            const camera = new THREE.PerspectiveCamera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            camera.position.set(0, 2, 8);
+
+            // OrbitControls 추가
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.25;
+            controls.enableZoom = true;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 2.0;
+
+            // 배경 설정
+            scene.background = new THREE.Color(0x0a0000);
+
+            // 조명 추가
+            const ambientLight = new THREE.AmbientLight(0xff6666, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight1.position.set(5, 5, 5);
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0xff0000, 0.4);
+            dirLight2.position.set(-5, 3, -5);
+            scene.add(dirLight2);
+
+            // 포인트 라이트 추가 (더 드라마틱한 효과)
+            const pointLight = new THREE.PointLight(0xff0000, 1, 100);
+            pointLight.position.set(0, 3, 3);
+            scene.add(pointLight);
+
+            // GLTFLoader로 모델 로드
+            const loader = new GLTFLoader();
+            let mixer = null;
+            const clock = new THREE.Clock();
+
+            loader.load(
+                'jigsaw/scene.gltf',
+                function (gltf) {
+                    const model = gltf.scene;
+                    
+                    // 모델 크기 조정
+                    const box = new THREE.Box3().setFromObject(model);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 3 / maxDim;
+                    model.scale.set(scale, scale, scale);
+
+                    // 모델 중앙 정렬
+                    box.setFromObject(model);
+                    const center = box.getCenter(new THREE.Vector3());
+                    model.position.sub(center);
+
+                    scene.add(model);
+                    loadingText.style.display = 'none';
+
+                    // 애니메이션 설정
+                    if (gltf.animations && gltf.animations.length > 0) {
+                        mixer = new THREE.AnimationMixer(model);
+                        
+                        // 모든 애니메이션 재생
+                        gltf.animations.forEach((clip) => {
+                            const action = mixer.clipAction(clip);
+                            action.play();
+                        });
+
+                        console.log(`Found ${gltf.animations.length} animations`);
+                    } else {
+                        console.log('No animations found in model');
+                    }
+
+                    // 애니메이션 루프
+                    function animate() {
+                        requestAnimationFrame(animate);
+                        
+                        const delta = clock.getDelta();
+                        if (mixer) {
+                            mixer.update(delta);
+                        }
+                        
+                        controls.update();
+                        renderer.render(scene, camera);
+                    }
+                    animate();
+                },
+                function (xhr) {
+                    const percent = (xhr.loaded / xhr.total * 100).toFixed(0);
+                    loadingText.textContent = `Loading Jigsaw... ${percent}%`;
+                },
+                function (error) {
+                    console.error('Error loading model:', error);
+                    loadingText.textContent = '⚠️ Model loading failed';
+                    loadingText.style.color = '#ff6666';
+                }
+            );
+
+            // 윈도우 리사이즈 처리
+            window.addEventListener('resize', function() {
+                const width = canvas.clientWidth;
+                const height = canvas.clientHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            });
+        }
+
+        // 페이지 로드 시 3D 모델 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            init3DModel();
+        });
+
+    </script>
+
+    <script>
+        // Game state
+        let gameState = {
+            playerName: "",
+            attemptsRemaining: 3,
+            totalScore: 0,
+            puzzlesSolved: 0,
+            hintsUsed: 0,
+            startTime: 0,
+            difficulty: "normal",
+            currentPuzzle: 0
+        };
+
+        // Sound effects (using Web Audio API for retro beeps)
+        function playSound(frequency, duration) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        function startGame() {
+            const playerName = document.getElementById('player-name').value.trim() || "Unknown";
+            const difficulty = document.getElementById('difficulty').value;
+            
+            gameState.playerName = playerName;
+            gameState.difficulty = difficulty;
+            gameState.startTime = Date.now();
+            
+            // Set attempts based on difficulty
+            switch(difficulty) {
+                case 'easy':
+                    gameState.attemptsRemaining = 5;
+                    break;
+                case 'normal':
+                    gameState.attemptsRemaining = 3;
+                    break;
+                case 'hard':
+                    gameState.attemptsRemaining = 1;
+                    break;
+            }
+            
+            updateStats();
+            showScreen('game-stats');
+            showScreen('puzzle1');
+            hideScreen('main-menu');
+            
+            playSound(200, 0.2);
+        }
+
+        function updateStats() {
+            document.getElementById('puzzles-solved').textContent = gameState.puzzlesSolved;
+            document.getElementById('attempts-remaining').textContent = gameState.attemptsRemaining;
+            document.getElementById('hints-used').textContent = gameState.hintsUsed;
+            
+            const currentScore = calculateCurrentScore();
+            document.getElementById('current-score').textContent = currentScore;
+        }
+
+        function calculateCurrentScore() {
+            const baseScore = gameState.puzzlesSolved * 100;
+            const timeBonus = Math.max(0, 300 - Math.floor((Date.now() - gameState.startTime) / 1000));
+            const hintPenalty = gameState.hintsUsed * 25;
+            const attemptsBonus = gameState.attemptsRemaining * 50;
+            
+            return Math.max(0, baseScore + timeBonus + attemptsBonus - hintPenalty);
+        }
+
+        function showScreen(screenId) {
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function hideScreen(screenId) {
+            document.getElementById(screenId).classList.add('hidden');
+        }
+
+        function showFeedback(puzzleId, message, type) {
+            // Remove old inline feedback system
+            const feedbackEl = document.getElementById(`${puzzleId}-feedback`);
+            if (feedbackEl) {
+                feedbackEl.classList.add('hidden');
+            }
+            
+            // Show modal instead
+            showModal(message, type);
+        }
+
+        function showModal(message, type, title = null, callback = null) {
+            const overlay = document.getElementById('modal-overlay');
+            const modal = document.getElementById('modal');
+            const header = document.getElementById('modal-header');
+            const content = document.getElementById('modal-content');
+            const primaryBtn = document.getElementById('modal-btn-primary');
+            const secondaryBtn = document.getElementById('modal-btn-secondary');
+            
+            // Set modal type and styling
+            modal.className = `modal ${type}`;
+            
+            // Set header based on type
+            if (title) {
+                header.textContent = title;
+            } else {
+                switch(type) {
+                    case 'success':
+                        header.innerHTML = '✅ SUCCESS!';
+                        break;
+                    case 'error':
+                        header.innerHTML = '❌ FAILURE!';
+                        break;
+                    case 'hint':
+                        header.innerHTML = '💡 HINT FROM JIGSAW';
+                        break;
+                    default:
+                        header.innerHTML = '📢 MESSAGE';
+                }
+            }
+            
+            // Set content with typewriter effect for dramatic messages
+            content.textContent = message;
+            if (type === 'error' || type === 'success') {
+                content.classList.add('typewriter');
+                setTimeout(() => content.classList.remove('typewriter'), 3000);
+            }
+            
+            // Configure buttons
+            primaryBtn.textContent = 'Confirm';
+            secondaryBtn.classList.add('hidden');
+            
+            // Store callback for later use
+            modal.dataset.callback = callback ? callback.name : '';
+            
+            // Show modal with animation
+            overlay.classList.add('show');
+            
+            // Add shake effect for errors
+            if (type === 'error') {
+                modal.classList.add('shake');
+                setTimeout(() => modal.classList.remove('shake'), 500);
+            }
+            
+            // Play appropriate sound
+            if (type === 'success') {
+                playSound(400, 0.3);
+            } else if (type === 'error') {
+                playSound(150, 0.5);
+            } else if (type === 'hint') {
+                playSound(300, 0.2);
+            }
+            
+            // Auto-close success messages after delay
+            if (type === 'success') {
+                setTimeout(() => {
+                    closeModal();
+                }, 3000);
+            }
+        }
+
+        function closeModal() {
+            const overlay = document.getElementById('modal-overlay');
+            const modal = document.getElementById('modal');
+            
+            overlay.classList.remove('show');
+            
+            // Execute callback if exists
+            const callbackName = modal.dataset.callback;
+            if (callbackName && window[callbackName]) {
+                setTimeout(() => window[callbackName](), 300);
+            }
+        }
+
+        // Close modal on overlay click
+        document.getElementById('modal-overlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('modal-overlay').classList.contains('show')) {
+                closeModal();
+            }
+        });
+
+        function getHint(puzzleId, hintText) {
+            if (gameState.hintsUsed >= 2) {
+                showModal("[JIGSAW] You've exhausted your hints. Face the challenge alone.", 'error', '🚫 NO MORE HINTS');
+                return;
+            }
+            
+            if (gameState.difficulty === 'hard') {
+                showModal("[JIGSAW] No hints in hard mode. Survive on your own.", 'error', '🚫 HARD MODE');
+                return;
+            }
+            
+            gameState.hintsUsed++;
+            updateStats();
+            
+            const fullHintMessage = `[JIGSAW] Fine. Here's your hint:\n\n${hintText}\n\n💰 Score penalty: -25 points\n(Hints used: ${gameState.hintsUsed}/2)`;
+            showModal(fullHintMessage, 'hint');
+        }
+
+        // Puzzle 1: Lock Combination
+        function solvePuzzle1() {
+            const code = document.getElementById('lock-code').value.trim();
+            
+            if (!/^\d{3}$/.test(code)) {
+                showModal('[JIGSAW] Format error. Precision matters in life and death.\n\nPlease enter exactly 3 digits.', 'error', '⚠️ INVALID FORMAT');
+                return;
+            }
+            
+            const first = parseInt(code[0]);
+            const middle = parseInt(code[1]);
+            const last = parseInt(code[2]);
+            const digitSum = first + middle + last;
+            const number = parseInt(code);
+            
+            const condition1 = (digitSum === 15);
+            const condition2 = (number % 3 === 0) && (number % 5 === 0);
+            const condition3 = (first === last + 2);
+            const condition4 = (middle % 2 === 1);
+            
+            const allConditionsMet = condition1 && condition2 && condition3 && condition4;
+            
+            if (allConditionsMet) {
+                const successMessage = `*CLICK* The lock opens...\n\n[JIGSAW] Adequate. Mathematics serves you well.\n\nCode ${code} accepted!`;
+                gameState.puzzlesSolved++;
+                updateStats();
+                showModal(successMessage, 'success', '🔓 LOCK OPENED');
+                
+                // 모달이 자동으로 닫힌 후 다음 퍼즐로 이동
+                setTimeout(() => {
+                    hideScreen('puzzle1');
+                    showScreen('puzzle2');
+                }, 3500); // 모달 표시 시간(3초) + 약간의 여유
+            } else {
+                let feedback = `*BUZZ* Incorrect combination: ${code}\n\n`;
+                if (!condition1) feedback += `❌ Sum was ${digitSum}, needed 15\n`;
+                if (!condition2) feedback += `❌ ${number} is not divisible by both 3 and 5\n`;
+                if (!condition3) feedback += `❌ First digit ${first} ≠ last digit ${last} + 2\n`;
+                if (!condition4) feedback += `❌ Middle digit ${middle} is not even\n`;
+                
+                handleFailure('puzzle1', feedback);
+            }
+        }
+
+        // Puzzle 2: Dice Prediction
+        // Puzzle 2: Dice Prediction with Conditional Probability
+        let revealedDie1 = null;
+
+        function revealFirstDie() {
+            revealedDie1 = Math.floor(Math.random() * 6) + 1;
+            
+            // Show first die
+            document.getElementById('dice-result').classList.remove('hidden');
+            document.getElementById('die1').textContent = revealedDie1;
+            document.getElementById('die2').textContent = '?';
+            
+            // Calculate conditional probability
+            const probData = calculateConditionalProbability(revealedDie1);
+            
+            // Create probability message based on difficulty
+            let message = `🎲 FIRST DIE REVEALED: ${revealedDie1}\n\n`;
+            
+            if (gameState.difficulty === 'easy') {
+                message += `[JIGSAW] I'll give you the math:\n\n`;
+                message += `Conditional Probability Analysis:\n`;
+                message += `• P(sum > 7 | die1=${revealedDie1}) = ${probData.greaterThan7}%\n`;
+                message += `• P(sum is odd | die1=${revealedDie1}) = 50%\n\n`;
+                message += `Optimal strategy:\n`;
+                message += `> 7: Choose ${probData.recommendation}\n`;
+                message += `Odd/Even: Either choice is 50/50\n\n`;
+                message += `I've set the recommended values for you.`;
+                
+                // Auto-set optimal choice for easy mode
+                document.getElementById('greater-seven-prediction').value = 
+                    probData.recommendation.toLowerCase();
+            } else if (gameState.difficulty === 'normal') {
+                message += `[JIGSAW] Let me show you the odds:\n\n`;
+                message += `Conditional Probability:\n`;
+                message += `• P(sum > 7 | die1=${revealedDie1}) = ${probData.greaterThan7}%\n`;
+                message += `• P(sum is odd) = 50%\n\n`;
+                message += `Choose wisely. Your life depends on mathematics.`;
+            } else {
+                // Hard mode - minimal info
+                message += `[JIGSAW] The first die shows ${revealedDie1}.\n\n`;
+                message += `Calculate the rest yourself.\n`;
+                message += `Your survival depends on your reasoning.`;
+            }
+            
+            showModal(message, 'hint', '📊 CONDITIONAL PROBABILITY');
+            
+            // Change button to roll second die
+            const actionBtn = document.getElementById('dice-action-btn');
+            actionBtn.textContent = '🎲 Roll Second Die';
+            actionBtn.onclick = rollSecondDie;
+            
+            playSound(300, 0.2);
+        }
+
+        function calculateConditionalProbability(die1) {
+            // To get sum > 7: die1 + die2 > 7, so die2 > (7 - die1)
+            const needDie2GreaterThan = 7 - die1;
+            
+            // Count favorable outcomes (die2 can be 1-6)
+            let favorableCases = 0;
+            for (let die2 = 1; die2 <= 6; die2++) {
+                if (die1 + die2 > 7) {
+                    favorableCases++;
+                }
+            }
+            
+            const probability = (favorableCases / 6 * 100).toFixed(1);
+            const recommendation = favorableCases >= 3 ? 'YES' : 'NO';
+            
+            return {
+                greaterThan7: probability,
+                recommendation: recommendation,
+                favorableCases: favorableCases
+            };
+        }
+
+        function rollSecondDie() {
+            if (revealedDie1 === null) {
+                showModal('[JIGSAW] You must reveal the first die before proceeding.', 'error');
+                return;
+            }
+            
+            const oddEvenPred = document.getElementById('odd-even-prediction').value;
+            const greaterSevenPred = document.getElementById('greater-seven-prediction').value;
+            
+            const die1 = revealedDie1;
+            const die2 = Math.floor(Math.random() * 6) + 1;
+            const total = die1 + die2;
+            
+            // Show both dice
+            document.getElementById('die2').textContent = die2;
+            
+            const isOdd = (total % 2 === 1);
+            const isGreaterThanSeven = (total > 7);
+            
+            const oddEvenCorrect = (oddEvenPred === 'odd' && isOdd) || 
+                                (oddEvenPred === 'even' && !isOdd);
+            const greaterSevenCorrect = (greaterSevenPred === 'yes' && isGreaterThanSeven) || 
+                                    (greaterSevenPred === 'no' && !isGreaterThanSeven);
+            
+            const bothCorrect = oddEvenCorrect && greaterSevenCorrect;
+            
+            // Create result message
+            let message = `🎲 FINAL RESULTS 🎲\n\n`;
+            message += `Die 1: ${die1}\n`;
+            message += `Die 2: ${die2}\n`;
+            message += `Sum: ${total}\n\n`;
+            message += `Actual outcome:\n`;
+            message += `• Sum is ${isOdd ? 'ODD' : 'EVEN'}\n`;
+            message += `• Sum is ${isGreaterThanSeven ? 'GREATER' : 'NOT GREATER'} than 7\n\n`;
+            
+            if (bothCorrect) {
+                message += `✅ BOTH PREDICTIONS CORRECT!\n\n`;
+                message += `[JIGSAW] Impressive. You understand probability.\n`;
+                message += `Those who master mathematics... survive.`;
+                
+                gameState.puzzlesSolved++;
+                updateStats();
+                
+                showModal(message, 'success', '🎯 PREDICTIONS CORRECT');
+                
+                // Reset for next time
+                revealedDie1 = null;
+                const actionBtn = document.getElementById('dice-action-btn');
+                actionBtn.textContent = '🎲 Reveal First Die';
+                actionBtn.onclick = revealFirstDie;
+                
+                setTimeout(() => {
+                    hideScreen('puzzle2');
+                    showScreen('puzzle3');
+                }, 3500);
+                
+            } else {
+                message += `❌ PREDICTION FAILED:\n\n`;
+                message += `Your predictions:\n`;
+                message += `• Odd/Even: ${oddEvenPred.toUpperCase()} ${oddEvenCorrect ? '✓' : '✗'}\n`;
+                message += `• Greater than 7: ${greaterSevenPred.toUpperCase()} ${greaterSevenCorrect ? '✓' : '✗'}\n\n`;
+                message += `[JIGSAW] Mathematics doesn't lie. You failed to see the truth.`;
+                
+                // Reset dice
+                revealedDie1 = null;
+                const actionBtn = document.getElementById('dice-action-btn');
+                actionBtn.textContent = '🎲 Reveal First Die';
+                actionBtn.onclick = revealFirstDie;
+                
+                // Reset display
+                setTimeout(() => {
+                    document.getElementById('dice-result').classList.add('hidden');
+                    document.getElementById('die1').textContent = '?';
+                    document.getElementById('die2').textContent = '?';
+                }, 2000);
+                
+                handleFailure('puzzle2', message);
+            }
+        }
+
+        // Puzzle 3: Cipher
+        function solvePuzzle3() {
+            const answer = document.getElementById('cipher-answer').value.trim().toUpperCase();
+            const encoded = "FUFEUK";
+            
+            // Decode function
+            function decodePositionalCipher(text) {
+                let result = "";
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    if (char >= 'A' && char <= 'Z') {
+                        const shiftedVal = (char.charCodeAt(0) - 'A'.charCodeAt(0) - (i + 1) + 26) % 26;
+                        result += String.fromCharCode('A'.charCodeAt(0) + shiftedVal);
+                    } else {
+                        result += char;
+                    }
+                }
+                return result;
+            }
+            
+            const correctAnswer = decodePositionalCipher(encoded);
+            
+            if (answer === correctAnswer) {
+                const successMessage = `🔓 CIPHER CRACKED!\n\nEncoded: ${encoded}\nDecoded: ${correctAnswer}\n\n[JIGSAW] '${correctAnswer}' - exactly what you seek.\n\nWords are power. You understand.`;
+                gameState.puzzlesSolved++;
+                updateStats();
+                showModal(successMessage, 'success', '🔤 CIPHER SOLVED');
+                
+                // Move to next puzzle after delay
+                setTimeout(() => {
+                    hideScreen('puzzle3');
+                    showScreen('puzzle4');
+                }, 3500);
+            } else {
+                const failMessage = `❌ INCORRECT!\n\nYour answer: "${answer}"\nCorrect answer: "${correctAnswer}"\n\n[JIGSAW] Words matter. Precision matters more.\n\nYou failed to decode the message.`;
+                handleFailure('puzzle3', failMessage);
+            }
+        }
+
+        // Puzzle 4: Logic Gates
+        function solvePuzzle4() {
+            const A = document.getElementById('switch-a').value === 'true';
+            const B = document.getElementById('switch-b').value === 'true';
+            const C = document.getElementById('switch-c').value === 'true';
+            
+            const result = (A && B) || (!C);
+            
+            // Show logic gate evaluation
+            const resultDiv = document.getElementById('logic-gate-result');
+            resultDiv.innerHTML = `
+                <div>⚡ Logic gate evaluation:</div>
+                <div>A = ${A}</div>
+                <div>B = ${B}</div>
+                <div>C = ${C}</div>
+                <div>(A AND B) = ${A && B}</div>
+                <div>(NOT C) = ${!C}</div>
+                <div>Final: (${A && B}) OR (${!C}) = ${result}</div>
+            `;
+            resultDiv.classList.remove('hidden');
+            
+            // Create detailed modal message
+            let modalMessage = `⚡ LOGIC GATE EVALUATION ⚡\n\n`;
+            modalMessage += `Input Values:\nA = ${A}\nB = ${B}\nC = ${C}\n\n`;
+            modalMessage += `Calculations:\n(A AND B) = ${A && B}\n(NOT C) = ${!C}\n\n`;
+            modalMessage += `Final Result:\n(${A && B}) OR (${!C}) = ${result}\n\n`;
+            
+            if (result === true) {
+                modalMessage += `✅ Output: TRUE - Gate UNLOCKED!\n\n[JIGSAW] Logic is the key to freedom.\nYou understand the final truth.\n\nThe chamber opens...`;
+                gameState.puzzlesSolved++;
+                updateStats();
+                showModal(modalMessage, 'success', '🎉 FINAL GATE OPENED');
+                
+                // Victory sound sequence
+                setTimeout(() => playSound(400, 0.2), 100);
+                setTimeout(() => playSound(500, 0.2), 300);
+                setTimeout(() => playSound(600, 0.2), 500);
+                setTimeout(() => playSound(800, 0.5), 700);
+                
+                // Move directly to victory screen (without another modal)
+                setTimeout(() => {
+                    hideScreen('puzzle4');
+                    showVictoryScreenDirect();
+                }, 3500);
+            } else {
+                modalMessage += `❌ Output: FALSE - Gate remains LOCKED.\n\n[JIGSAW] Boolean logic defeats you.\nHow fitting for your final failure.`;
+                handleFailure('puzzle4', modalMessage);
+            }
+        }
+
+        function showVictoryScreenDirect() {
+                hideAllPuzzles();
+                
+                const finalScore = calculateCurrentScore();
+                const elapsedTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+                
+                let grade = "";
+                let gradeClass = "";
+                
+                if (finalScore >= 400) {
+                    grade = "⭐⭐⭐ MASTER ESCAPIST ⭐⭐⭐";
+                    gradeClass = "master";
+                } else if (finalScore >= 300) {
+                    grade = "⭐⭐ SKILLED SOLVER ⭐⭐";
+                    gradeClass = "skilled";
+                } else if (finalScore >= 200) {
+                    grade = "⭐ DECENT ATTEMPT ⭐";
+                    gradeClass = "decent";
+                } else {
+                    grade = "NEEDS IMPROVEMENT";
+                    gradeClass = "needs-improvement";
+                }
+                
+                const resultsDiv = document.getElementById('victory-results');
+                resultsDiv.innerHTML = `
+                    <div class="final-score">🏆 FINAL RESULTS 🏆</div>
+                    <div style="margin: 20px 0;">
+                        <div><strong>Player:</strong> ${gameState.playerName}</div>
+                        <div><strong>Score:</strong> ${finalScore}</div>
+                        <div><strong>Time:</strong> ${elapsedTime} seconds</div>
+                        <div><strong>Hints Used:</strong> ${gameState.hintsUsed}</div>
+                    </div>
+                    <div class="grade ${gradeClass}">${grade}</div>
+                `;
+                
+                showScreen('victory');
+            }
+
+
+
+        function handleFailure(puzzleId, message) {
+            gameState.attemptsRemaining--;
+            updateStats();
+            
+            if (gameState.attemptsRemaining > 0) {
+                const fullMessage = `${message}\n\n⚠️ ATTEMPTS REMAINING: ${gameState.attemptsRemaining}\n\n[JIGSAW] Failure teaches... if you survive to learn.`;
+                showModal(fullMessage, 'error', '💀 FAILURE');
+            } else {
+                showGameOver("No attempts remaining. The chamber seals forever.");
+            }
+        }
+
+        function showGameOver(reason) {
+            hideAllPuzzles();
+            
+            const finalScore = calculateCurrentScore();
+            const elapsedTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+            
+            let gameOverMessage = `💀 GAME OVER 💀\n\n[JIGSAW] ${reason}\n\n`;
+            if (gameState.puzzlesSolved === 0) {
+                gameOverMessage += "You failed before you even began. Pathetic.";
+            } else if (gameState.puzzlesSolved === 1) {
+                gameOverMessage += "One puzzle... barely a warm-up. Disappointing.";
+            } else if (gameState.puzzlesSolved === 2) {
+                gameOverMessage += "So close, yet so far. The final test proved too much.";
+            } else if (gameState.puzzlesSolved === 3) {
+                gameOverMessage += "Three puzzles solved, yet you fell at the final gate.";
+            }
+            
+            gameOverMessage += `\n\n📊 FINAL STATISTICS:\n`;
+            gameOverMessage += `Player: ${gameState.playerName}\n`;
+            gameOverMessage += `Score: ${finalScore}\n`;
+            gameOverMessage += `Puzzles Solved: ${gameState.puzzlesSolved}/4\n`;
+            gameOverMessage += `Hints Used: ${gameState.hintsUsed}\n`;
+            gameOverMessage += `Time: ${elapsedTime} seconds\n`;
+            gameOverMessage += `Difficulty: ${gameState.difficulty.toUpperCase()}`;
+            
+            // Show dramatic game over modal
+            showModal(gameOverMessage, 'error', '💀 THE CHAMBER SEALS', () => {
+                setTimeout(() => {
+                    showGameOverScreen(finalScore, elapsedTime);
+                }, 1000);
+            });
+            
+            playSound(100, 1.0);
+        }
+
+        function showGameOverScreen(finalScore, elapsedTime) {
+            document.getElementById('game-over-message').innerHTML = `[JIGSAW] Your test is complete. You have been weighed, measured, and found wanting.`.replace(/\n/g, '<br>');
+            
+            const resultsDiv = document.getElementById('final-results');
+            resultsDiv.innerHTML = `
+                <div class="final-score">💀 Final Score: ${finalScore} 💀</div>
+                <div>Puzzles Solved: ${gameState.puzzlesSolved}/4</div>
+                <div>Hints Used: ${gameState.hintsUsed}</div>
+                <div>Time Elapsed: ${elapsedTime} seconds</div>
+                <div>Player: ${gameState.playerName}</div>
+            `;
+            
+            showScreen('game-over');
+        }
+
+        function showVictory() {
+            hideAllPuzzles();
+            
+            const finalScore = calculateCurrentScore();
+            const elapsedTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+            
+            let grade = "";
+            let gradeClass = "";
+            
+            if (finalScore >= 400) {
+                grade = "⭐⭐⭐ MASTER ESCAPIST ⭐⭐⭐";
+                gradeClass = "master";
+            } else if (finalScore >= 300) {
+                grade = "⭐⭐ SKILLED SOLVER ⭐⭐";
+                gradeClass = "skilled";
+            } else if (finalScore >= 200) {
+                grade = "⭐ DECENT ATTEMPT ⭐";
+                gradeClass = "decent";
+            } else {
+                grade = "NEEDS IMPROVEMENT";
+                gradeClass = "needs-improvement";
+            }
+            
+            // Create victory message
+            let victoryMessage = `🎉 ESCAPE SUCCESSFUL! 🎉\n\n`;
+            victoryMessage += `*CLANK* The final lock opens...\n\n`;
+            victoryMessage += `[JIGSAW] Impressive. You've proven your worth today.\n`;
+            victoryMessage += `The chamber releases you... this time.\n\n`;
+            victoryMessage += `🏆 FINAL RESULTS:\n`;
+            victoryMessage += `Player: ${gameState.playerName}\n`;
+            victoryMessage += `Score: ${finalScore}\n`;
+            victoryMessage += `Time: ${elapsedTime} seconds\n`;
+            victoryMessage += `Hints Used: ${gameState.hintsUsed}\n`;
+            victoryMessage += `Grade: ${grade}\n\n`;
+            victoryMessage += `You have mastered the logic chamber.\nFew can claim such victory.`;
+            
+            // Show victory modal first
+            showModal(victoryMessage, 'success', '🎉 FREEDOM ACHIEVED', () => {
+                setTimeout(() => {
+                    showVictoryScreen(finalScore, elapsedTime, grade, gradeClass);
+                }, 1000);
+            });
+            
+            // Victory sound sequence
+            setTimeout(() => playSound(400, 0.2), 0);
+            setTimeout(() => playSound(500, 0.2), 200);
+            setTimeout(() => playSound(600, 0.2), 400);
+            setTimeout(() => playSound(800, 0.5), 600);
+        }
+
+        function showVictoryScreen(finalScore, elapsedTime, grade, gradeClass) {
+            const resultsDiv = document.getElementById('victory-results');
+            resultsDiv.innerHTML = `
+                <div class="final-score">🏆 FINAL RESULTS 🏆</div>
+                <div style="margin: 20px 0;">
+                    <div><strong>Player:</strong> ${gameState.playerName}</div>
+                    <div><strong>Score:</strong> ${finalScore}</div>
+                    <div><strong>Time:</strong> ${elapsedTime} seconds</div>
+                    <div><strong>Hints Used:</strong> ${gameState.hintsUsed}</div>
+                </div>
+                <div class="grade ${gradeClass}">${grade}</div>
+            `;
+            
+            showScreen('victory');
+        }
+
+        function hideAllPuzzles() {
+            hideScreen('puzzle1');
+            hideScreen('puzzle2');
+            hideScreen('puzzle3');
+            hideScreen('puzzle4');
+            hideScreen('game-stats');
+        }
+
+        function restartGame() {
+            // Reset game state
+            gameState = {
+                playerName: "",
+                attemptsRemaining: 3,
+                totalScore: 0,
+                puzzlesSolved: 0,
+                hintsUsed: 0,
+                startTime: 0,
+                difficulty: "normal",
+                currentPuzzle: 0
+            };
+            
+            // Clear all inputs
+            document.getElementById('player-name').value = "";
+            document.getElementById('difficulty').value = "normal";
+            document.getElementById('lock-code').value = "";
+            document.getElementById('odd-even-prediction').value = "odd";
+            document.getElementById('greater-seven-prediction').value = "yes";
+            document.getElementById('cipher-answer').value = "";
+            document.getElementById('switch-a').value = "true";
+            document.getElementById('switch-b').value = "true";
+            document.getElementById('switch-c').value = "true";
+            
+            // Hide all feedback
+            const feedbacks = document.querySelectorAll('.feedback');
+            feedbacks.forEach(fb => fb.classList.add('hidden'));
+            
+            // Hide dice result
+            document.getElementById('dice-result').classList.add('hidden');
+            document.getElementById('logic-gate-result').classList.add('hidden');
+            
+            // Show main menu
+            hideScreen('game-over');
+            hideScreen('victory');
+            hideAllPuzzles();
+            showScreen('main-menu');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            // Enter key submits current puzzle
+            if (event.key === 'Enter') {
+                if (!document.getElementById('puzzle1').classList.contains('hidden')) {
+                    solvePuzzle1();
+                } else if (!document.getElementById('puzzle2').classList.contains('hidden')) {
+                    rollDice();
+                } else if (!document.getElementById('puzzle3').classList.contains('hidden')) {
+                    solvePuzzle3();
+                } else if (!document.getElementById('puzzle4').classList.contains('hidden')) {
+                    solvePuzzle4();
+                }
+            }
+            
+            // Escape key for hints
+            if (event.key === 'Escape') {
+                if (!document.getElementById('puzzle1').classList.contains('hidden')) {
+                    getHint('puzzle1', 'Think about multiples of 15: 150, 165, 180, 195...');
+                } else if (!document.getElementById('puzzle2').classList.contains('hidden')) {
+                    getHint('puzzle2', 'Sums greater than 7: need 8,9,10,11,12. Probability = 15/36');
+                } else if (!document.getElementById('puzzle3').classList.contains('hidden')) {
+                    getHint('puzzle3', 'E becomes F (+1), S becomes U (+2)... find the pattern!');
+                } else if (!document.getElementById('puzzle4').classList.contains('hidden')) {
+                    getHint('puzzle4', 'Try A=True, B=True, C=any value OR A=any, B=any, C=False');
+                }
+            }
+        });
+
+        // Auto-focus inputs when puzzle loads
+        function focusCurrentInput() {
+            setTimeout(() => {
+                if (!document.getElementById('puzzle1').classList.contains('hidden')) {
+                    document.getElementById('lock-code').focus();
+                } else if (!document.getElementById('puzzle3').classList.contains('hidden')) {
+                    document.getElementById('cipher-answer').focus();
+                }
+            }, 100);
+        }
+
+        // Add some dramatic timing effects
+        function addDramaticPause(callback, delay = 1000) {
+            setTimeout(callback, delay);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add some initial animation to the title
+            const title = document.querySelector('.title');
+            title.style.opacity = '0';
+            title.style.transform = 'translateY(-20px)';
+            
+            setTimeout(() => {
+                title.style.transition = 'all 1s ease-out';
+                title.style.opacity = '1';
+                title.style.transform = 'translateY(0)';
+            }, 500);
+            
+            // Focus on name input
+            document.getElementById('player-name').focus();
+        });
+
+        // Add visual effects for button presses
+        document.addEventListener('click', function(event) {
+            if (event.target.classList.contains('btn')) {
+                event.target.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    event.target.style.transform = '';
+                }, 100);
+            }
+        });
+
+        // Add typing sound effect for inputs
+        document.addEventListener('input', function(event) {
+            if (event.target.tagName === 'INPUT') {
+                playSound(800, 0.05);
+            }
+        });
+
+        // Auto-uppercase for cipher input
+        document.getElementById('cipher-answer').addEventListener('input', function(event) {
+            event.target.value = event.target.value.toUpperCase();
+        });
+
+        // Limit lock code to numbers only
+        document.getElementById('lock-code').addEventListener('input', function(event) {
+            event.target.value = event.target.value.replace(/[^0-9]/g, '');
+        });
+
+        // Add some Easter eggs
+        let konamiCode = [];
+        const konamiSequence = [
+            'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+            'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
+            'KeyB', 'KeyA'
+        ];
+
+        document.addEventListener('keydown', function(event) {
+            konamiCode.push(event.code);
+            if (konamiCode.length > konamiSequence.length) {
+                konamiCode.shift();
+            }
+            
+            if (konamiCode.join(',') === konamiSequence.join(',')) {
+                // Easter egg: Max score
+                gameState.puzzlesSolved = 4;
+                gameState.hintsUsed = 0;
+                gameState.attemptsRemaining = 5;
+                updateStats();
+                
+                showFeedback('puzzle1', '[JIGSAW] Konami code detected. You cheated... but cleverly.', 'hint');
+                
+                // Play special sound
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => playSound(400 + i * 100, 0.1), i * 100);
+                }
+                
+                konamiCode = [];
+            }
+        });
+    </script>
+</body>
+</html>

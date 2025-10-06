@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Generative Looping Patterns — JS Studio</title>
+  <style>
+    :root{
+      --bg:#111;
+      --panel:#1b1b1b;
+      --ink:#eee;
+      --muted:#aaa;
+      --accent:#ff4d4d;
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif}
+    .wrap{display:grid;grid-template-columns:320px 1fr;min-height:100vh}
+    @media (max-width: 900px){.wrap{grid-template-columns:1fr}}
+    aside{padding:18px;gap:12px;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid #2a2a2a}
+    h1{font-size:18px;margin:0 0 8px}
+    .hint{color:var(--muted);font-size:12px;margin-top:-4px}
+    fieldset{border:1px solid #2c2c2c;border-radius:var(--radius);padding:14px}
+    legend{padding:0 6px;color:#ddd}
+    label{display:block;margin:8px 0 4px}
+    input[type="range"]{width:100%}
+    input[type="text"], select{width:100%;padding:8px 10px;border-radius:10px;border:1px solid #2d2d2d;background:#121212;color:#eee}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    button{padding:10px 12px;border-radius:10px;border:1px solid #2d2d2d;background:#151515;color:#eee;cursor:pointer}
+    button:hover{border-color:#3a3a3a;box-shadow:0 0 0 1px #333 inset}
+    button.primary{background:var(--accent);border-color:#ff6767;color:#000;font-weight:600}
+    main{display:grid;place-items:center;padding:16px}
+    canvas{background:#0d0d0d;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.4);image-rendering:pixelated;max-width:100%;height:auto}
+    footer{font-size:12px;color:#9b9b9b}
+    .small{font-size:12px;color:#bdbdbd}
+    .pill{padding:2px 8px;border-radius:999px;background:#222;border:1px solid #333}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <aside>
+    <h1>Generative Looping Patterns <span class="pill">JS</span></h1>
+    <div class="hint">Tile-based retro mosaic inspired by pixel pictograms. Edit, remix, and export.</div>
+
+    <fieldset>
+      <legend>Grid</legend>
+      <label>Columns: <span id="colsOut">18</span></label>
+      <input id="cols" type="range" min="6" max="48" value="18" />
+      <label>Rows: <span id="rowsOut">10</span></label>
+      <input id="rows" type="range" min="4" max="36" value="10" />
+      <label>Gap (px): <span id="gapOut">8</span></label>
+      <input id="gap" type="range" min="0" max="24" value="8" />
+      <div class="row">
+        <label><input id="rotate" type="checkbox" checked /> rotate 0/90/180/270°</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Randomness</legend>
+      <label>Seed</label>
+      <input id="seed" type="text" value="forest-fox-735" />
+      <div class="row">
+        <button id="btnRandomSeed">🎲 New seed</button>
+        <button id="btnApplySeed">Apply</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Palette</legend>
+      <label>Color Set</label>
+      <select id="palette">
+        <option value="pixelpop">Pixel Pop (bright)</option>
+        <option value="famicom">Famicom (red/black)</option>
+        <option value="gameboy">Game Boy Greens</option>
+        <option value="cmyk">CMYK-ish</option>
+        <option value="mono">Mono + Accent</option>
+      </select>
+      <label>Background</label>
+      <select id="bg">
+        <option value="#0d0d0d">#0d0d0d</option>
+        <option value="#111">#111</option>
+        <option value="#000">#000</option>
+        <option value="#161616">#161616</option>
+        <option value="#1f1a1a">#1f1a1a</option>
+      </select>
+    </fieldset>
+
+    <fieldset>
+      <legend>Mode</legend>
+      <select id="mode">
+        <option value="icons">Icon Mosaic</option>
+        <option value="checkers">Checkers + Dots</option>
+        <option value="tri">Triangle Quilt</option>
+      </select>
+      <div class="small hint">Try switching modes to see how loops drive different aesthetics.</div>
+    </fieldset>
+
+    <div class="row">
+      <button id="btnRedraw" class="primary">Redraw (R)</button>
+      <button id="btnDownload">Download PNG</button>
+    </div>
+
+    <footer>
+      <div class="small">Assignments ideas (☑ inside the code):
+        <ul>
+          <li>Add your own 8×8 icon</li>
+          <li>Create a new palette</li>
+          <li>Animate with requestAnimationFrame</li>
+          <li>Introduce symmetry (flip/rotate mirroring)</li>
+        </ul>
+      </div>
+    </footer>
+  </aside>
+
+  <main>
+    <canvas id="c" width="1400" height="900"></canvas>
+  </main>
+</div>
+
+<script>
+// ——————————————————————————————————————————————
+// Utilities: seeded RNG (cyrb128 + sfc32)
+// ——————————————————————————————————————————————
+function cyrb128(str){
+  let h1=1779033703, h2=3144134277, h3=1013904242, h4=2773480762;
+  for(let i=0;i<str.length;i++){
+    let k = str.charCodeAt(i);
+    h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+    h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+    h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+  }
+  h1 = Math.imul(h3 ^ (h1>>>18), 597399067);
+  h2 = Math.imul(h4 ^ (h2>>>22), 2869860233);
+  h3 = Math.imul(h1 ^ (h3>>>17), 951274213);
+  h4 = Math.imul(h2 ^ (h4>>>19), 2716044179);
+  return [(h1^h2^h3^h4)>>>0, (h2^h1)>>>0, (h3^h1)>>>0, (h4^h1)>>>0];
+}
+function sfc32(a,b,c,d){
+  return function(){
+    a>>>0; b>>>0; c>>>0; d>>>0;
+    var t = (a + b) | 0; a = b ^ b>>>9; b = (c + (c<<3)) | 0; c = (c<<21 | c>>>11); d = (d + 1) | 0; t = (t + d) | 0; c = (c + t) | 0; return (t>>>0) / 4294967296;
+  }
+}
+function makeRng(seed){ const s = cyrb128(seed); return sfc32(s[0], s[1], s[2], s[3]); }
+function choice(rng, arr){ return arr[Math.floor(rng()*arr.length)] }
+
+// ——————————————————————————————————————————————
+// Palettes (feel free to extend!)
+// ——————————————————————————————————————————————
+const PALETTES = {
+  pixelpop:['#e63946','#f1fa8c','#20c997','#00bcd4','#ff7f50','#ffd166','#06d6a0','#9b5de5','#00f5d4','#fff'],
+  famicom:['#d7282f','#000000','#f4f4f4','#f2b233'],
+  gameboy:['#0f380f','#306230','#8bac0f','#9bbc0f','#cadc9f'],
+  cmyk:['#00a1e4','#ef476f','#ffd166','#06d6a0','#073b4c'],
+  mono:['#f2f2f2','#bdbdbd','#888','#555','#ff4d4d']
+};
+
+// ——————————————————————————————————————————————
+// Icons (8×8 bitmaps)
+// Add your own by appending to ICONS
+// Use 'X' for filled pixel and '.' for empty.
+// ——————————————————————————————————————————————
+function iconFromStrings(rows){
+  return rows.map(r=>r.split('').map(ch=>ch==='X'))
+}
+const ICONS = [
+  // heart
+  iconFromStrings([
+    '.XX..XX.',
+    'XXXXXXX.',
+    'XXXXXXX.',
+    '.XXXXX..',
+    '..XXX...',
+    '...X....',
+    '........',
+    '........'
+  ]),
+  // cat face
+  iconFromStrings([
+    'X......X',
+    '.X.XX.X.',
+    '.XXXXXX.',
+    'XXX..XXX',
+    'X.X..X.X',
+    'X.XXXX.X',
+    '.X....X.',
+    '..XXXX..'
+  ]),
+  // arrow right
+  iconFromStrings([
+    '..X.....',
+    '..XX....',
+    'XXXXXXX.',
+    'XXXXXXX.',
+    '..XX....',
+    '..X.....',
+    '........',
+    '........'
+  ]),
+  // mug
+  iconFromStrings([
+    '.XXXX...',
+    '.X..X...',
+    '.XXXX...',
+    '.X..X...',
+    '.XXXX...',
+    '...XX...',
+    '...XX...',
+    '........'
+  ]),
+  // phone
+  iconFromStrings([
+    '.XXXX...',
+    '.X..X...',
+    '.X..X...',
+    '.X..X...',
+    '.X..X...',
+    '.XXXX...',
+    '........',
+    '........'
+  ]),
+  // star
+  iconFromStrings([
+    '...X....',
+    'XXX.XXX.',
+    '.XXXXX..',
+    '..XXX...',
+    '.XXXXX..',
+    'XXX.XXX.',
+    '...X....',
+    '........'
+  ]),
+  // circle
+  iconFromStrings([
+    '..XXXX..',
+    '.XXXXXX.',
+    '.XXXXXX.',
+    '.XXXXXX.',
+    '.XXXXXX.',
+    '..XXXX..',
+    '........',
+    '........'
+  ]),
+  // music note
+  iconFromStrings([
+    'XXX.....',
+    '.X......',
+    '.X.XXX..',
+    '.X.X.X..',
+    '.X.X.X..',
+    '.XXX.X..',
+    '.....X..',
+    '.....X..'
+  ])
+];
+
+// ——————————————————————————————————————————————
+// Drawing helpers
+// ——————————————————————————————————————————————
+function drawIcon(ctx, x, y, size, icon, color){
+  const px = Math.floor(size/8);
+  ctx.fillStyle = color;
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      if(icon[r][c]){
+        ctx.fillRect(x + c*px, y + r*px, px, px);
+      }
+    }
+  }
+}
+
+function drawCheckers(ctx, x, y, size, rng, colors){
+  const px = Math.max(2, Math.floor(size/8));
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      if((r+c)%2===0){
+        ctx.fillStyle = choice(rng, colors);
+        ctx.fillRect(x + c*px, y + r*px, px, px);
+      }
+    }
+  }
+  // random dot
+  ctx.fillStyle = choice(rng, colors);
+  const r = Math.floor(rng()*8), c = Math.floor(rng()*8);
+  ctx.beginPath();
+  ctx.arc(x + c*px + px/2, y + r*px + px/2, px/2, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function drawTriangles(ctx, x, y, size, rng, colors){
+  ctx.save();
+  const col = choice(rng, colors);
+  ctx.strokeStyle = '#00000066';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(x, y+size);
+  ctx.lineTo(x+size, y+size);
+  ctx.lineTo(x+size/2, y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ——————————————————————————————————————————————
+// Main render
+// ——————————————————————————————————————————————
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+function render(){
+  const cols = +colsEl.value;
+  const rows = +rowsEl.value;
+  const gap  = +gapEl.value;
+  const pal  = PALETTES[paletteEl.value];
+  const background = bgEl.value;
+  const rotate = rotateEl.checked;
+  const mode = modeEl.value;
+
+  // Responsive tile sizing
+  const W = canvas.clientWidth || canvas.width;
+  const H = canvas.clientHeight || canvas.height;
+  const tile = Math.floor(Math.min((canvas.width - (cols+1)*gap)/cols, (canvas.height - (rows+1)*gap)/rows));
+
+  // Seeded RNG
+  const rng = makeRng(seedEl.value);
+
+  // clear
+  ctx.save();
+  ctx.fillStyle = background; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.restore();
+
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const x = gap + c*(tile+gap);
+      const y = gap + r*(tile+gap);
+
+      ctx.save();
+      if(rotate){
+        const k = Math.floor(rng()*4);
+        const cx = x + tile/2, cy = y + tile/2;
+        ctx.translate(cx, cy);
+        ctx.rotate(k * Math.PI/2);
+        ctx.translate(-cx, -cy);
+      }
+
+      if(mode === 'icons'){
+        // subtle background box
+        ctx.fillStyle = '#ffffff08';
+        ctx.fillRect(x,y,tile,tile);
+        drawIcon(ctx, x, y, tile, choice(rng, ICONS), choice(rng, pal));
+      } else if(mode === 'checkers'){
+        drawCheckers(ctx, x, y, tile, rng, pal);
+      } else if(mode === 'tri'){
+        drawTriangles(ctx, x, y, tile, rng, pal);
+      }
+      ctx.restore();
+    }
+  }
+}
+
+// ——————————————————————————————————————————————
+// Controls
+// ——————————————————————————————————————————————
+const colsEl = document.getElementById('cols');
+const rowsEl = document.getElementById('rows');
+const gapEl  = document.getElementById('gap');
+const seedEl = document.getElementById('seed');
+const paletteEl = document.getElementById('palette');
+const bgEl = document.getElementById('bg');
+const rotateEl = document.getElementById('rotate');
+const modeEl = document.getElementById('mode');
+
+const colsOut = document.getElementById('colsOut');
+const rowsOut = document.getElementById('rowsOut');
+const gapOut  = document.getElementById('gapOut');
+
+function syncLabels(){
+  colsOut.textContent = colsEl.value;
+  rowsOut.textContent = rowsEl.value;
+  gapOut.textContent = gapEl.value;
+}
+
+[colsEl, rowsEl, gapEl, seedEl, paletteEl, bgEl, rotateEl, modeEl].forEach(el=>{
+  el.addEventListener('input', ()=>{ syncLabels(); render(); });
+});
+
+// Buttons
+const btnRandomSeed = document.getElementById('btnRandomSeed');
+const btnApplySeed  = document.getElementById('btnApplySeed');
+const btnRedraw     = document.getElementById('btnRedraw');
+const btnDownload   = document.getElementById('btnDownload');
+
+btnRandomSeed.addEventListener('click', ()=>{
+  seedEl.value = 'seed-' + Math.random().toString(36).slice(2,8);
+  render();
+});
+btnApplySeed.addEventListener('click', ()=> render());
+btnRedraw.addEventListener('click', ()=> render());
+
+btnDownload.addEventListener('click', ()=>{
+  const link = document.createElement('a');
+  link.download = `pattern_${seedEl.value}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+// Keyboard: R to redraw
+window.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()==='r') render(); });
+
+// Handle high-DPI + responsive sizing
+function fitCanvas(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.min(1600, document.querySelector('main').clientWidth - 16);
+  const h = Math.min(1000, window.innerHeight - 32);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.width = Math.floor(w*dpr);
+  canvas.height = Math.floor(h*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', ()=>{ fitCanvas(); render(); });
+
+// Init
+fitCanvas();
+syncLabels();
+render();
+
+// ——————————————————————————————————————————————
+// ☑ ASSIGNMENT TODOs (open this file and tweak!)
+// 1) Add a new icon to ICONS (8 strings of length 8 with 'X' and '.')
+// 2) Add a new palette to PALETTES and switch from the dropdown
+// 3) Animate: call render() in requestAnimationFrame and change rotation or colors over time
+// 4) Symmetry: in icons mode, mirror left→right within the tile for kaleidoscopic vibes
+// 5) Rarity: introduce rare golden tiles (~1%) by rng() < 0.01
+// ——————————————————————————————————————————————
+</script>
+</body>
+</html>
